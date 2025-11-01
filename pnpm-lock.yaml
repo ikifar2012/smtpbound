@@ -25,7 +25,7 @@ importers:
         specifier: ^3.4.6
         version: 3.4.6
       '@types/node':
-        specifier: ^20.11.17
+        specifier: ^20.19.24
         version: 20.19.24
       '@types/smtp-server':
         specifier: ^3.5.12
