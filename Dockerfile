@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.19
 
 # --- Build stage ---
-FROM node:20-slim AS build
+FROM node:24-slim AS build
 
 WORKDIR /app
 
@@ -20,7 +20,7 @@ RUN pnpm build
 RUN pnpm prune --prod
 
 # --- Runtime stage ---
-FROM node:20-slim AS runtime
+FROM node:24-slim AS runtime
 
 ENV NODE_ENV=production
 WORKDIR /app
