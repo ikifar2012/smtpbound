@@ -21,6 +21,8 @@ const SMTP_AUTH_ENABLED = process.env.SMTP_AUTH_ENABLED === 'true'
 const SMTP_AUTH_USER = process.env.SMTP_AUTH_USER
 const SMTP_AUTH_PASS = process.env.SMTP_AUTH_PASS
 const SMTP_AUTH_ALLOW_INSECURE = process.env.SMTP_AUTH_ALLOW_INSECURE === 'true'
+// If true, treat upstream TLS terminated by a trusted reverse proxy as satisfying the TLS requirement for AUTH
+const SMTP_TRUST_PROXY_TLS = process.env.SMTP_TRUST_PROXY_TLS === 'true'
 
 if (!INBOUND_API_KEY) {
   console.error('Missing INBOUND_API_KEY in environment. Set it in .env')
@@ -77,9 +79,9 @@ if (SMTP_AUTH_ENABLED) {
     console.error('SMTP_AUTH_ENABLED is true, but SMTP_AUTH_USER/SMTP_AUTH_PASS are not set')
     process.exit(1)
   }
-  if (!SMTP_AUTH_ALLOW_INSECURE && !SMTP_SECURE && !tlsConfigured) {
+  if (!SMTP_AUTH_ALLOW_INSECURE && !SMTP_SECURE && !tlsConfigured && !SMTP_TRUST_PROXY_TLS) {
     console.error(
-      'SMTP_AUTH_ENABLED requires TLS when SMTP_AUTH_ALLOW_INSECURE=false. Provide TLS_KEY_PATH/TLS_CERT_PATH for STARTTLS or set SMTP_SECURE=true for SMTPS.'
+      'SMTP_AUTH_ENABLED requires TLS when SMTP_AUTH_ALLOW_INSECURE=false. Provide TLS_KEY_PATH/TLS_CERT_PATH for STARTTLS, set SMTP_SECURE=true for SMTPS, or set SMTP_TRUST_PROXY_TLS=true when terminating TLS at a trusted reverse proxy.'
     )
     process.exit(1)
   }
@@ -107,7 +109,7 @@ const server = new SMTPServer({
     if (!SMTP_AUTH_ENABLED) {
       return callback(new Error('Authentication disabled'))
     }
-    if (!SMTP_AUTH_ALLOW_INSECURE && !session.secure) {
+    if (!SMTP_AUTH_ALLOW_INSECURE && !(session.secure || SMTP_TRUST_PROXY_TLS)) {
       return callback(new Error('Must use TLS (STARTTLS/SMTPS) for authentication'))
     }
     if (!SMTP_AUTH_USER || !SMTP_AUTH_PASS) {
