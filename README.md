@@ -59,7 +59,7 @@ cp .env.example .env
 Edit `.env`:
 - Set `INBOUND_API_KEY`
 - Choose TLS mode:
-  - STARTTLS on 25: keep `SMTP_SECURE=false`, `SMTP_PORT=25`
+  - STARTTLS: keep `SMTP_SECURE=false` (default) and set `SMTP_PORT` (25 is typical)
   - SMTPS on 465: set `SMTP_SECURE=true`, `SMTP_PORT=465`
 - If using TLS, set `TLS_KEY_PATH` and `TLS_CERT_PATH`. The example uses `/certs/...` so mount your certs:
 
@@ -82,7 +82,8 @@ docker compose up --build
 ## TLS and SMTP AUTH
 
 TLS
-- STARTTLS (on 25): provide `TLS_KEY_PATH` and `TLS_CERT_PATH` and the server will advertise STARTTLS
+- Plaintext (no TLS): set `SMTP_SECURE=false` and do not set `TLS_KEY_PATH`/`TLS_CERT_PATH`. In this mode, STARTTLS is not offered and connections are plaintext.
+- STARTTLS (when `SMTP_SECURE=false`): on the configured `SMTP_PORT` (default 25). Provide `TLS_KEY_PATH` and `TLS_CERT_PATH` and the server will advertise STARTTLS.
 - SMTPS (on 465): set `SMTP_SECURE=true` and keep the same cert envs
 - Optional: enforce a minimum TLS version, e.g. `TLS_MIN_VERSION=TLSv1.2`
 
@@ -91,38 +92,6 @@ SMTP AUTH
 - To require clients to auth, set `SMTP_AUTH_REQUIRED=true`
 - Configure `SMTP_AUTH_USER` and `SMTP_AUTH_PASS`
 - If `SMTP_AUTH_ALLOW_INSECURE=false` (recommended), AUTH is only accepted over TLS (after STARTTLS or on SMTPS)
-
-## Verify your sending domain (DNS)
-
-To send from your own domain through Inbound, verify it in the Inbound dashboard:
-
-1) Inbound → Domains → Add domain (e.g., `yourdomain.com`)
-2) Create the DNS records shown (DKIM TXT, return-path CNAME)
-3) Wait for propagation and click Verify
-
-Once verified, you can set `from` like `noreply@yourdomain.com` and the bridge will forward via Inbound.
-
-## Binding to port 25 on Linux (local)
-
-Listening on port 25 requires root or `cap_net_bind_service`. Options:
-
-1) Grant Node the capability (persists across restarts):
-
-```bash
-sudo setcap 'cap_net_bind_service=+ep' "$(command -v node)"
-```
-
-2) Use `authbind`:
-
-```bash
-sudo apt-get install -y authbind
-sudo touch /etc/authbind/byport/25
-sudo chown "$USER":"$USER" /etc/authbind/byport/25
-sudo chmod 755 /etc/authbind/byport/25
-SMTP_PORT=25 authbind --deep pnpm start
-```
-
-3) Use a reverse proxy (iptables/nftables) to forward 25 → 2525 and run the app on 2525.
 
 ## Configuration
 
