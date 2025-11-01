@@ -18,7 +18,6 @@ const TLS_MIN_VERSION = process.env.TLS_MIN_VERSION // e.g., TLSv1.2
 
 // AUTH configuration
 const SMTP_AUTH_ENABLED = process.env.SMTP_AUTH_ENABLED === 'true'
-const SMTP_AUTH_REQUIRED = process.env.SMTP_AUTH_REQUIRED === 'true'
 const SMTP_AUTH_USER = process.env.SMTP_AUTH_USER
 const SMTP_AUTH_PASS = process.env.SMTP_AUTH_PASS
 const SMTP_AUTH_ALLOW_INSECURE = process.env.SMTP_AUTH_ALLOW_INSECURE === 'true'
@@ -71,6 +70,21 @@ function firstAddress(input?: AddressObject | AddressObject[]): string | undefin
 // Create SMTP server
 const tlsConfigured = Boolean(TLS_KEY_PATH && TLS_CERT_PATH)
 
+// Validate environment and configuration
+if (SMTP_AUTH_ENABLED) {
+  // When auth is enabled, it is always required
+  if (!SMTP_AUTH_USER || !SMTP_AUTH_PASS) {
+    console.error('SMTP_AUTH_ENABLED is true, but SMTP_AUTH_USER/SMTP_AUTH_PASS are not set')
+    process.exit(1)
+  }
+  if (!SMTP_AUTH_ALLOW_INSECURE && !SMTP_SECURE && !tlsConfigured) {
+    console.error(
+      'SMTP_AUTH_ENABLED requires TLS when SMTP_AUTH_ALLOW_INSECURE=false. Provide TLS_KEY_PATH/TLS_CERT_PATH for STARTTLS or set SMTP_SECURE=true for SMTPS.'
+    )
+    process.exit(1)
+  }
+}
+
 // Compute which commands to disable based on config
 const disabledCommands: string[] = []
 if (!tlsConfigured && !SMTP_SECURE) disabledCommands.push('STARTTLS')
@@ -87,7 +101,8 @@ const server = new SMTPServer({
       }
     : {}),
   disabledCommands,
-  authOptional: !SMTP_AUTH_REQUIRED,
+  // If auth is enabled, require it; otherwise, allow unauthenticated use
+  authOptional: !SMTP_AUTH_ENABLED,
   onAuth(auth: SMTPServerAuthentication, session: SMTPServerSession, callback) {
     if (!SMTP_AUTH_ENABLED) {
       return callback(new Error('Authentication disabled'))

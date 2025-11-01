@@ -89,7 +89,7 @@ TLS
 
 SMTP AUTH
 - Off by default. Enable with `SMTP_AUTH_ENABLED=true`
-- To require clients to auth, set `SMTP_AUTH_REQUIRED=true`
+- When enabled, authentication is required for all clients
 - Configure `SMTP_AUTH_USER` and `SMTP_AUTH_PASS`
 - If `SMTP_AUTH_ALLOW_INSECURE=false` (recommended), AUTH is only accepted over TLS (after STARTTLS or on SMTPS)
 
