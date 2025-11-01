@@ -1,11 +1,8 @@
 services:
-
   smtpbound:
-    build: .
-    image: smtpbound:local
+    image: ghcr.io/ikifar2012/smtpbound:main
     env_file:
       - .env
-    
     ports:
       - "25:25"
     # Allow binding to port 25 without running as root
