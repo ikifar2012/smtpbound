@@ -4,25 +4,17 @@ import type { SMTPServerSession, SMTPServerDataStream, SMTPServerAuthentication 
 import { simpleParser } from 'mailparser'
 import type { ParsedMail, AddressObject } from 'mailparser'
 import { Inbound } from '@inboundemail/sdk'
-import { readFileSync } from 'node:fs'
 
 // Config
 const SMTP_PORT = Number(process.env.SMTP_PORT ?? 25)
 const SMTP_HOST = process.env.SMTP_HOST ?? '0.0.0.0'
 const INBOUND_API_KEY = process.env.INBOUND_API_KEY
 const DEFAULT_FROM = process.env.DEFAULT_FROM // optional override if envelope lacks From header
-const SMTP_SECURE = process.env.SMTP_SECURE === 'true' // if true, SMTPS (implicit TLS)
-const TLS_KEY_PATH = process.env.TLS_KEY_PATH
-const TLS_CERT_PATH = process.env.TLS_CERT_PATH
-const TLS_MIN_VERSION = process.env.TLS_MIN_VERSION // e.g., TLSv1.2
 
 // AUTH configuration
 const SMTP_AUTH_ENABLED = process.env.SMTP_AUTH_ENABLED === 'true'
 const SMTP_AUTH_USER = process.env.SMTP_AUTH_USER
 const SMTP_AUTH_PASS = process.env.SMTP_AUTH_PASS
-const SMTP_AUTH_ALLOW_INSECURE = process.env.SMTP_AUTH_ALLOW_INSECURE === 'true'
-// If true, treat upstream TLS terminated by a trusted reverse proxy as satisfying the TLS requirement for AUTH
-const SMTP_TRUST_PROXY_TLS = process.env.SMTP_TRUST_PROXY_TLS === 'true'
 
 if (!INBOUND_API_KEY) {
   console.error('Missing INBOUND_API_KEY in environment. Set it in .env')
@@ -69,9 +61,6 @@ function firstAddress(input?: AddressObject | AddressObject[]): string | undefin
   return list?.[0]
 }
 
-// Create SMTP server
-const tlsConfigured = Boolean(TLS_KEY_PATH && TLS_CERT_PATH)
-
 // Validate environment and configuration
 if (SMTP_AUTH_ENABLED) {
   // When auth is enabled, it is always required
@@ -79,42 +68,24 @@ if (SMTP_AUTH_ENABLED) {
     console.error('SMTP_AUTH_ENABLED is true, but SMTP_AUTH_USER/SMTP_AUTH_PASS are not set')
     process.exit(1)
   }
-  if (!SMTP_AUTH_ALLOW_INSECURE && !SMTP_SECURE && !tlsConfigured && !SMTP_TRUST_PROXY_TLS) {
-    console.error(
-      'SMTP_AUTH_ENABLED requires TLS when SMTP_AUTH_ALLOW_INSECURE=false. Provide TLS_KEY_PATH/TLS_CERT_PATH for STARTTLS, set SMTP_SECURE=true for SMTPS, or set SMTP_TRUST_PROXY_TLS=true when terminating TLS at a trusted reverse proxy.'
-    )
-    process.exit(1)
-  }
 }
 
 // Compute which commands to disable based on config
 const disabledCommands: string[] = []
-if (!tlsConfigured && !SMTP_SECURE) disabledCommands.push('STARTTLS')
+disabledCommands.push('STARTTLS')
 if (!SMTP_AUTH_ENABLED) disabledCommands.push('AUTH')
 
 // Log configuration summary at startup for easier ops/debugging
 console.log('[smtpbound] configuration summary:', {
   host: SMTP_HOST,
   port: SMTP_PORT,
-  mode: SMTP_SECURE ? 'SMTPS (implicit TLS)' : (tlsConfigured ? 'SMTP with STARTTLS' : 'SMTP plaintext'),
-  tlsConfigured,
-  tlsMinVersion: TLS_MIN_VERSION || 'default',
+  mode: 'SMTP plaintext',
   authEnabled: SMTP_AUTH_ENABLED,
-  authRequiresTLS: SMTP_AUTH_ENABLED ? !SMTP_AUTH_ALLOW_INSECURE : undefined,
-  trustProxyTLS: SMTP_TRUST_PROXY_TLS,
   disabledCommands,
 })
 
 const server = new SMTPServer({
-  secure: SMTP_SECURE,
-  // If certs are provided, enable STARTTLS (when secure=false) or use them for SMTPS (secure=true)
-  ...(tlsConfigured
-    ? {
-        key: readFileSync(TLS_KEY_PATH!),
-        cert: readFileSync(TLS_CERT_PATH!),
-        tls: TLS_MIN_VERSION ? { minVersion: TLS_MIN_VERSION as any } : undefined,
-      }
-    : {}),
+  secure: false,
   disabledCommands,
   // If auth is enabled, require it; otherwise, allow unauthenticated use
   authOptional: !SMTP_AUTH_ENABLED,
@@ -145,9 +116,6 @@ const server = new SMTPServer({
   onAuth(auth: SMTPServerAuthentication, session: SMTPServerSession, callback) {
     if (!SMTP_AUTH_ENABLED) {
       return callback(new Error('Authentication disabled'))
-    }
-    if (!SMTP_AUTH_ALLOW_INSECURE && !(session.secure || SMTP_TRUST_PROXY_TLS)) {
-      return callback(new Error('Must use TLS (STARTTLS/SMTPS) for authentication'))
     }
     if (!SMTP_AUTH_USER || !SMTP_AUTH_PASS) {
       return callback(new Error('Server auth not configured'))
@@ -198,12 +166,13 @@ const server = new SMTPServer({
 
         const { data, error } = await inbound.emails.send(payload as any)
         if (error) {
-          console.error('Inbound send error:', error)
+          console.error('Inbound send error:', { remoteAddress: session.remoteAddress, error })
           callback(new Error('Failed to forward email to Inbound'))
           return
         }
 
         console.log('Forwarded email to Inbound:', {
+          remoteAddress: session.remoteAddress,
           id: data?.id,
           messageId: data?.messageId,
           from: payload.from,
