@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@inboundemail/sdk':
-        specifier: ^4.3.1
-        version: 4.3.1(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+        specifier: ^4.4.0
+        version: 4.4.0(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       dotenv:
         specifier: ^17.2.3
         version: 17.2.3
@@ -320,8 +320,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@inboundemail/sdk@4.3.1':
-    resolution: {integrity: sha512-WHyGHnGa5Kyzd/rJW4p/XJVqwx9s/e2LgqO3eL1+XCpu3xAU3W8A7oHs1l5kD3kakMuEjAoLacAp+xT3P58q6w==}
+  '@inboundemail/sdk@4.4.0':
+    resolution: {integrity: sha512-DChj0xIMeTZCgoTJ+iQm1r8JadqOj/5+EmGCK7pG9mtP2Q6mfG6OsCa8E4q/0nu4lTSrgl/OQdDHZzwWdcfA4g==}
     engines: {node: '>=16.0.0'}
     peerDependencies:
       react: '>=16.8.0'
@@ -1144,7 +1144,7 @@ snapshots:
   '@esbuild/win32-x64@0.25.11':
     optional: true
 
-  '@inboundemail/sdk@4.3.1(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
+  '@inboundemail/sdk@4.4.0(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
     dependencies:
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
