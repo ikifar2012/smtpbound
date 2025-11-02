@@ -7,7 +7,7 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
-    "@inboundemail/sdk": "^4.3.1",
+    "@inboundemail/sdk": "^4.4.0",
     "dotenv": "^17.2.3",
     "mailparser": "^3.7.5",
     "smtp-server": "^3.16.0"
