@@ -92,6 +92,19 @@ const disabledCommands: string[] = []
 if (!tlsConfigured && !SMTP_SECURE) disabledCommands.push('STARTTLS')
 if (!SMTP_AUTH_ENABLED) disabledCommands.push('AUTH')
 
+// Log configuration summary at startup for easier ops/debugging
+console.log('[smtpbound] configuration summary:', {
+  host: SMTP_HOST,
+  port: SMTP_PORT,
+  mode: SMTP_SECURE ? 'SMTPS (implicit TLS)' : (tlsConfigured ? 'SMTP with STARTTLS' : 'SMTP plaintext'),
+  tlsConfigured,
+  tlsMinVersion: TLS_MIN_VERSION || 'default',
+  authEnabled: SMTP_AUTH_ENABLED,
+  authRequiresTLS: SMTP_AUTH_ENABLED ? !SMTP_AUTH_ALLOW_INSECURE : undefined,
+  trustProxyTLS: SMTP_TRUST_PROXY_TLS,
+  disabledCommands,
+})
+
 const server = new SMTPServer({
   secure: SMTP_SECURE,
   // If certs are provided, enable STARTTLS (when secure=false) or use them for SMTPS (secure=true)
@@ -105,6 +118,30 @@ const server = new SMTPServer({
   disabledCommands,
   // If auth is enabled, require it; otherwise, allow unauthenticated use
   authOptional: !SMTP_AUTH_ENABLED,
+  onConnect(session: SMTPServerSession, callback) {
+    try {
+      console.log('[smtpbound] client connected', {
+        id: session.id,
+        remoteAddress: session.remoteAddress,
+        clientHostname: (session as any).clientHostname,
+        secure: session.secure,
+      })
+    } catch (e) {
+      // ignore logging issues
+    }
+    callback()
+  },
+  onClose(session: SMTPServerSession) {
+    try {
+      console.log('[smtpbound] client disconnected', {
+        id: session.id,
+        remoteAddress: session.remoteAddress,
+        secure: session.secure,
+      })
+    } catch (e) {
+      // ignore logging issues
+    }
+  },
   onAuth(auth: SMTPServerAuthentication, session: SMTPServerSession, callback) {
     if (!SMTP_AUTH_ENABLED) {
       return callback(new Error('Authentication disabled'))
