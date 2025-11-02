@@ -58,17 +58,7 @@ cp .env.example .env
 
 Edit `.env`:
 - Set `INBOUND_API_KEY`
-- Choose TLS mode:
-  - STARTTLS: keep `SMTP_SECURE=false` (default) and set `SMTP_PORT` (25 is typical)
-  - SMTPS on 465: set `SMTP_SECURE=true`, `SMTP_PORT=465`
-- If using TLS, set `TLS_KEY_PATH` and `TLS_CERT_PATH`. The example uses `/certs/...` so mount your certs:
-
-docker-compose.yml (add a volume under the `smtpbound` service):
-
-```yaml
-volumes:
-  - /local/certs:/certs:ro
-```
+- If enabling auth, set `SMTP_AUTH_ENABLED=true` and configure `SMTP_AUTH_USER`/`SMTP_AUTH_PASS`
 
 2) Build and run
 
@@ -76,22 +66,63 @@ volumes:
 docker compose up --build
 ```
 
-- For STARTTLS, keep the default port mapping `25:25`.
-- For SMTPS, change the service ports to `465:465`.
+By default, the SMTP server will be available on port `25`.
 
-## TLS and SMTP AUTH
+## Reverse Proxy with Nginx (for TLS)
 
-TLS
-- Plaintext (no TLS): set `SMTP_SECURE=false` and do not set `TLS_KEY_PATH`/`TLS_CERT_PATH`. In this mode, STARTTLS is not offered and connections are plaintext.
-- STARTTLS (when `SMTP_SECURE=false`): on the configured `SMTP_PORT` (default 25). Provide `TLS_KEY_PATH` and `TLS_CERT_PATH` and the server will advertise STARTTLS.
-- SMTPS (on 465): set `SMTP_SECURE=true` and keep the same cert envs
-- Optional: enforce a minimum TLS version, e.g. `TLS_MIN_VERSION=TLSv1.2`
+This service is designed to run behind a reverse proxy that handles TLS termination. The recommended approach is to use Nginx with the `ngx_stream_core_module` for simple and efficient TCP proxying.
 
-SMTP AUTH
+Here is a simplified example for proxying SMTPS (port 465) traffic.
+
+1.  **Add a `stream` block to your `nginx.conf`:**
+
+    This block should be at the top level of your configuration, alongside the `http` block if you have one.
+
+    ```nginx
+    stream {
+        # Define an upstream server for the smtpbound service
+        upstream smtpbound {
+            # Assumes smtpbound is running on the same machine on port 25.
+            # If it's in a Docker container, use the container's name and port.
+            # example: server smtpbound:25;
+            server 127.0.0.1:25;
+        }
+
+        # This server handles incoming SMTPS (implicit TLS) connections
+        server {
+            listen 465 ssl;
+
+            # Proxy the connection to the smtpbound service
+            proxy_pass smtpbound;
+
+            # --- SSL/TLS Configuration ---
+            # Replace with your certificate paths
+            ssl_certificate /path/to/your/fullchain.pem;
+            ssl_certificate_key /path/to/your/privkey.pem;
+
+            # Recommended modern SSL settings
+            ssl_protocols TLSv1.2 TLSv1.3;
+            ssl_ciphers HIGH:!aNULL:!MD5;
+        }
+    }
+    ```
+
+2.  **Ensure `smtpbound` is running** and accessible from Nginx at the address specified in the `upstream` block.
+
+3.  **Configure your DNS** to point an `MX` record to your Nginx server.
+
+This setup allows Nginx to terminate the TLS connection and forward the plaintext SMTP traffic to `smtpbound`.
+
+> **Note on STARTTLS (Port 587):**
+>
+> Proxying STARTTLS is more complex because the connection starts in plaintext and is upgraded to TLS. This requires Nginx to understand the SMTP protocol, which is handled by the `ngx_mail_core_module` and is more complex to configure. For simplicity, we recommend using SMTPS (port 465).
+
+## SMTP AUTH
+
 - Off by default. Enable with `SMTP_AUTH_ENABLED=true`
 - When enabled, authentication is required for all clients
 - Configure `SMTP_AUTH_USER` and `SMTP_AUTH_PASS`
-- If `SMTP_AUTH_ALLOW_INSECURE=false` (recommended), AUTH is only accepted over TLS (after STARTTLS or on SMTPS)
+- When using a reverse proxy for TLS, the connection from the proxy to `smtpbound` is plaintext, but the client-to-proxy connection is secure.
 
 ## Configuration
 
