@@ -10,6 +10,7 @@ const SMTP_PORT = Number(process.env.SMTP_PORT ?? 25)
 const SMTP_HOST = process.env.SMTP_HOST ?? '0.0.0.0'
 const INBOUND_API_KEY = process.env.INBOUND_API_KEY
 const DEFAULT_FROM = process.env.DEFAULT_FROM // optional override if envelope lacks From header
+const LOG_LEVEL = (process.env.LOG_LEVEL || 'info').toLowerCase()
 
 // AUTH configuration
 const SMTP_AUTH_ENABLED = process.env.SMTP_AUTH_ENABLED === 'true'
@@ -81,8 +82,56 @@ console.log('[smtpbound] configuration summary:', {
   port: SMTP_PORT,
   mode: 'SMTP plaintext',
   authEnabled: SMTP_AUTH_ENABLED,
+  defaultFrom: DEFAULT_FROM ? '<set>' : '<unset>',
   disabledCommands,
 })
+
+// Helper: create SMTP error with response code (defaults to 451 temporary failure)
+function smtpError(message: string, code = 451): Error {
+  const err = new Error(message)
+  ;(err as any).responseCode = code
+  return err
+}
+
+function toSafeJSON(obj: unknown) {
+  try {
+    return JSON.parse(
+      JSON.stringify(
+        obj,
+        (_, v) => (v instanceof Buffer ? `<Buffer:${v.length}>` : v)
+      )
+    )
+  } catch {
+    return String(obj)
+  }
+}
+
+function classifySendFailure(err: any): { code: number; reason: string; meta?: Record<string, any> } {
+  const status: number | undefined = err?.status || err?.statusCode || err?.response?.status
+  const name: string | undefined = err?.name
+  const code: string | number | undefined = err?.code
+  const message: string = err?.message || String(err)
+  const responseData = err?.data || err?.response?.data || err?.errors || undefined
+  const meta = {
+    status,
+    name,
+    code,
+    message,
+    data: responseData ? toSafeJSON(responseData) : undefined,
+  }
+
+  // Map HTTP-ish statuses to SMTP response codes
+  // - 5xx => 451 (temporary)
+  // - 429 => 451 (rate limit, temporary)
+  // - 4xx => 550 (permanent)
+  // - fallback => 451
+  if (status === 429) return { code: 451, reason: 'Rate limited by upstream', meta }
+  if (typeof status === 'number') {
+    if (status >= 500) return { code: 451, reason: 'Upstream server error', meta }
+    if (status >= 400) return { code: 550, reason: 'Upstream rejected request', meta }
+  }
+  return { code: 451, reason: 'Unknown upstream failure', meta }
+}
 
 const server = new SMTPServer({
   secure: false,
@@ -132,7 +181,7 @@ const server = new SMTPServer({
     stream.on('end', async () => {
       try {
         const raw = Buffer.concat(chunks)
-  const mail = await simpleParser(raw)
+        const mail = await simpleParser(raw)
 
         const envelopeFrom = typeof session.envelope.mailFrom === 'object' && session.envelope.mailFrom
           ? session.envelope.mailFrom.address
@@ -157,17 +206,71 @@ const server = new SMTPServer({
           cc: addressList(mail.cc),
           bcc: addressList(mail.bcc),
           replyTo: addressList(mail.replyTo),
-          headers: mail.headerLines?.reduce<Record<string, string>>((acc, h) => {
-            acc[h.key] = h.line
-            return acc
-          }, {}),
+          // Build simple string headers object per Inbound API expectations
+          // Exclude standard/system headers to avoid duplicates (Date, From, To, Subject, etc.)
+          headers: (() => {
+            const out: Record<string, string> = {}
+            const DISALLOWED = new Set<string>([
+              'date',
+              'from',
+              'to',
+              'cc',
+              'bcc',
+              'subject',
+              'reply-to',
+              'reply_to',
+              'message-id',
+              'messageid',
+              'mime-version',
+              'content-type',
+              'content-transfer-encoding',
+              'content-disposition',
+              'content-id',
+              'return-path',
+              'sender',
+              'delivered-to',
+              'received',
+              'authentication-results',
+              'dkim-signature',
+              'arc-seal',
+              'arc-message-signature',
+              'arc-authentication-results',
+            ])
+            try {
+              for (const [rawKey, value] of mail.headers) {
+                const key = String(rawKey)
+                const lc = key.toLowerCase()
+                if (DISALLOWED.has(lc)) continue
+                if (value == null) continue
+                // Normalize various header value shapes to string
+                const str = Array.isArray(value)
+                  ? value.map((v) => (typeof v === 'string' ? v : (v as any)?.text ?? (v as any)?.value ?? String(v))).join(', ')
+                  : typeof value === 'string'
+                    ? value
+                    : (value as any)?.text ?? (value as any)?.value ?? String(value)
+                if (str && typeof str === 'string') out[key] = str
+              }
+            } catch {
+              // ignore header mapping issues
+            }
+            return Object.keys(out).length ? out : undefined
+          })(),
           attachments: mapAttachments(mail),
         }
 
         const { data, error } = await inbound.emails.send(payload as any)
         if (error) {
-          console.error('Inbound send error:', { remoteAddress: session.remoteAddress, error })
-          callback(new Error('Failed to forward email to Inbound'))
+          const failure = classifySendFailure(error)
+          if (LOG_LEVEL !== 'silent') {
+            console.error('Inbound send error:', {
+              remoteAddress: session.remoteAddress,
+              to: payload.to,
+              from: payload.from,
+              subject: payload.subject,
+              failure,
+            })
+          }
+          callback(smtpError(`Failed to send email via Inbound: ${failure.reason}`, failure.code))
           return
         }
 
@@ -181,9 +284,11 @@ const server = new SMTPServer({
         })
 
         callback()
-      } catch (err) {
-        console.error('Error processing email:', err)
-        callback(new Error('Error processing email'))
+      } catch (err: any) {
+        if (LOG_LEVEL !== 'silent') {
+          console.error('Error processing email:', toSafeJSON(err))
+        }
+        callback(smtpError('Error processing email', 451))
       }
     })
   },
