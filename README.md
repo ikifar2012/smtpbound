@@ -7,7 +7,7 @@ This service exposes a local SMTP server and forwards received messages to [Inbo
 ## Features
 
 - Lightweight Node.js SMTP listener
-- Optional built-in SMTPS (implicit TLS on 465) — no Nginx required
+- Optional built-in SMTPS (implicit TLS on 465)
 - Parses MIME with attachments and forwards to Inbound `emails.send`
 - Simple configuration via environment variables (`.env`)
 
