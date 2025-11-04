@@ -72,7 +72,6 @@ To enable TLS without a reverse proxy, use implicit TLS mode:
      - `SMTP_SECURE=true`
      - `TLS_CERT_PATH=/path/to/fullchain.pem`
      - `TLS_KEY_PATH=/path/to/privkey.pem`
-     - Optional: `TLS_CA_PATH=/path/to/ca-bundle.pem`
      When `SMTP_SECURE=true`, default port becomes `465` (override with `SMTP_PORT` if needed).
 
 2) Test TLS endpoint locally:

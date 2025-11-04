@@ -10,7 +10,6 @@ import fs from 'node:fs'
 const SMTP_SECURE = process.env.SMTP_SECURE === 'true'
 const TLS_CERT_PATH = process.env.TLS_CERT_PATH
 const TLS_KEY_PATH = process.env.TLS_KEY_PATH
-const TLS_CA_PATH = process.env.TLS_CA_PATH
 const DEFAULT_SMTP_PORT = SMTP_SECURE ? 465 : 25
 const SMTP_PORT = Number(process.env.SMTP_PORT ?? DEFAULT_SMTP_PORT)
 const SMTP_HOST = process.env.SMTP_HOST ?? '0.0.0.0'
@@ -145,7 +144,6 @@ function classifySendFailure(err: any): { code: number; reason: string; meta?: R
 // Load TLS materials if secure mode is enabled
 let tlsKey: Buffer | undefined
 let tlsCert: Buffer | undefined
-let tlsCa: Buffer | undefined
 if (SMTP_SECURE) {
   if (!TLS_CERT_PATH || !TLS_KEY_PATH) {
     console.error('SMTP_SECURE is true but TLS_CERT_PATH/TLS_KEY_PATH are not set')
@@ -154,13 +152,6 @@ if (SMTP_SECURE) {
   try {
     tlsCert = fs.readFileSync(TLS_CERT_PATH)
     tlsKey = fs.readFileSync(TLS_KEY_PATH)
-    if (TLS_CA_PATH) {
-      try {
-        tlsCa = fs.readFileSync(TLS_CA_PATH)
-      } catch (e) {
-        console.warn('Could not read TLS_CA_PATH; continuing without custom CA:', TLS_CA_PATH)
-      }
-    }
   } catch (e) {
     console.error('Failed to read TLS certificate or key:', e)
     process.exit(1)
@@ -170,7 +161,7 @@ if (SMTP_SECURE) {
 const server = new SMTPServer({
   secure: SMTP_SECURE,
   // Provide TLS materials in secure mode
-  ...(SMTP_SECURE ? { key: tlsKey, cert: tlsCert, ca: tlsCa } : {}),
+  ...(SMTP_SECURE ? { key: tlsKey, cert: tlsCert } : {}),
   disabledCommands,
   // If auth is enabled, require it; otherwise, allow unauthenticated use
   authOptional: !SMTP_AUTH_ENABLED,
