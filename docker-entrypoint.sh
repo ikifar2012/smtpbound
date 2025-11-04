@@ -34,6 +34,12 @@ ensure_tools() {
   fi
 }
 
+acme() {
+  # acme.sh interprets LOG_LEVEL as a numeric debug level; our app uses strings like 'info'.
+  # Unset LOG_LEVEL for acme.sh calls to avoid numeric comparisons failing.
+  env -u LOG_LEVEL acme.sh "$@"
+}
+
 install_acmesh() {
   if command -v acme.sh >/dev/null 2>&1; then
     return
@@ -55,7 +61,7 @@ acme_set_ca() {
       ;;
   esac
   local args=("--home" "$ACME_HOME" "--set-default-ca" "--server" "$server")
-  acme.sh "${args[@]}"
+  acme "${args[@]}"
 }
 
 acme_register() {
@@ -71,7 +77,7 @@ acme_register() {
   if [[ "${ACME_SERVER}" == "letsencrypt" && "${ACME_STAGING}" == "true" ]]; then
     args+=("--staging")
   fi
-  acme.sh "${args[@]}" || true
+  acme "${args[@]}" || true
 }
 
 acme_domains_args() {
@@ -109,7 +115,7 @@ acme_issue_install() {
   local cert_conf="$ACME_HOME/$primary/$primary.conf"
   if [[ -f "$cert_conf" ]]; then
     log "Existing cert config found for $primary; attempting renew if due (<= ${ACME_RENEW_DAYS}d)"
-    if ! acme.sh --home "$ACME_HOME" --renew -d "$primary" --days "$ACME_RENEW_DAYS"; then
+    if ! acme --home "$ACME_HOME" --renew -d "$primary" --days "$ACME_RENEW_DAYS"; then
       warn "acme.sh --renew failed; will proceed to install existing cert if available"
     fi
   else
@@ -119,7 +125,7 @@ acme_issue_install() {
     if [[ "${ACME_SERVER}" == "letsencrypt" && "${ACME_STAGING}" == "true" ]]; then
       ISSUE_ARGS+=(--staging)
     fi
-    acme.sh \
+    acme \
       "${ISSUE_ARGS[@]}" \
       "${DOMAIN_ARGS[@]}" \
       --dns "$provider" \
@@ -131,7 +137,7 @@ acme_issue_install() {
 
   mkdir -p "$CERT_DIR"
   # Install/Copy certs to fixed paths
-  acme.sh --home "$ACME_HOME" \
+  acme --home "$ACME_HOME" \
     --install-cert -d "$primary" \
     --fullchain-file "$CERT_DIR/fullchain.pem" \
     --key-file "$CERT_DIR/privkey.pem" \
