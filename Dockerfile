@@ -25,9 +25,9 @@ FROM node:24-slim AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
 
-# Install minimal tools needed by entrypoint (curl, openssl)
+# Install minimal runtime tools (ca-certificates for outbound TLS)
 RUN apt-get update \
-	&& apt-get install -y --no-install-recommends bash curl ca-certificates openssl tar \
+	&& apt-get install -y --no-install-recommends ca-certificates \
 	&& rm -rf /var/lib/apt/lists/*
 
 # Copy built artifacts and production deps only
@@ -35,9 +35,10 @@ COPY --from=build /app/package.json /app/pnpm-lock.yaml ./
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 
-# Add entrypoint
+# Add entrypoint and reload helper used by deploy-hook docker
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+COPY scripts/reload-smtpbound.sh /usr/local/bin/reload-smtpbound.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh /usr/local/bin/reload-smtpbound.sh
 
 # Default env; override at runtime
 ENV SMTP_HOST=0.0.0.0

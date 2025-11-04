@@ -88,48 +88,55 @@ swaks --server 127.0.0.1 --port 465 --tls-on-connect \
     --body "Hello from smtpbound with built-in TLS!"
 ```
 
-### Auto-generate certs with DNS validation (acme.sh)
+### TLS with acme.sh (deploy-hook docker)
 
-This image can self-manage TLS certificates on startup using [acme.sh] with DNS validation. Certs are stored in `/certs` and acme state in `/acme` (both persisted by docker-compose under `./secrets`).
+The container no longer runs acme.sh internally. Instead follow the
+[deploy-hook docker guide](https://github.com/acmesh-official/acme.sh/wiki/deploy-to-docker-containers)
+and let an external acme.sh instance copy certs into the running container.
 
-1) In `.env`, enable ACME and configure domains and your DNS provider:
-
-```
-ACME_ENABLED=true
-ACME_DOMAINS=mx.example.com,mail.example.com
-ACME_DNS_PROVIDER=dns_cf   # see acme.sh dnsapi list
-ACME_EMAIL=admin@example.com
-ACME_SERVER=letsencrypt    # or zerossl/buypass/google
-ACME_STAGING=true          # optional while testing
-
-# Provider credentials (example: Cloudflare)
-# CF_Token=... or CF_Key=... and CF_Email=...
-```
-
-2) Ensure your compose file mounts the volumes (already included here):
+1) Label the smtpbound service so acme.sh can find it:
 
 ```yaml
-volumes:
-    - ./secrets/acme:/acme
-    - ./secrets/certs:/certs
+services:
+    smtpbound:
+        labels:
+            - sh.acme.autoload.domain=mx.example.com  # set to your MX hostname
 ```
 
-3) Set SMTPS if desired and point the app to the generated paths (defaults work):
+2) Mount `/certs` so issued files persist and are visible to smtpbound (already
+     done in `docker-compose.yml`).
 
+3) Run the official `neilpang/acme.sh` image (daemon mode) with the Docker socket
+     mounted. The compose file contains a ready-to-use `acme` service that does
+     this.
+
+         - To use Cloudflare DNS (`dns_cf`), set `ACME_DNS_PROVIDER=dns_cf` and provide
+             `CF_Token` (recommended) or `CF_Key`/`CF_Email` in your `.env` (see
+             `.env.example`).
+
+4) Issue certificates by executing `acme.sh` inside the sidecar, e.g. (Cloudflare DNS):
+
+```bash
+docker exec acme.sh env \
+    CF_Token=$CF_Token \
+    acme.sh --issue \
+        -d mx.example.com \
+        --dns dns_cf \
+        --server letsencrypt
 ```
-SMTP_SECURE=true
-TLS_CERT_PATH=/certs/fullchain.pem
-TLS_KEY_PATH=/certs/privkey.pem
+
+5) Deploy into the smtpbound container using the Docker deploy hook:
+
+```bash
+docker exec acme.sh acme.sh --deploy -d mx.example.com --deploy-hook docker
 ```
 
-On container start, the entrypoint will:
-- install acme.sh if missing
-- register the ACME account
-- issue/renew a cert for the requested domains via DNS
-- install the certs into `/certs`
-- start the app
+During deployment acme.sh copies the certificate files into `/certs` and then
+executes `/usr/local/bin/reload-smtpbound.sh` inside the smtpbound container. The
+application listens for `SIGHUP` and reloads TLS materials without a full restart.
 
-Note: For Let's Encrypt, set `ACME_STAGING=true` during testing to avoid rate limits.
+If certificates are not yet present when the container boots, the entrypoint
+waits up to `TLS_WAIT_TIMEOUT_SECONDS` (default 60) for them to appear.
 
 ## Docker / Compose
 

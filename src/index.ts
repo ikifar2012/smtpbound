@@ -5,6 +5,7 @@ import { simpleParser } from 'mailparser'
 import type { ParsedMail, AddressObject } from 'mailparser'
 import { Inbound } from '@inboundemail/sdk'
 import fs from 'node:fs'
+import type { Server as TLSServer } from 'node:tls'
 
 // Config
 const SMTP_SECURE = process.env.SMTP_SECURE === 'true'
@@ -28,6 +29,12 @@ if (!INBOUND_API_KEY) {
 }
 
 const inbound = new Inbound(INBOUND_API_KEY)
+
+function loadTLSMaterial(certPath: string, keyPath: string): { cert: Buffer; key: Buffer } {
+  const cert = fs.readFileSync(certPath)
+  const key = fs.readFileSync(keyPath)
+  return { cert, key }
+}
 
 // Utility to convert parsed attachments to Inbound SDK format
 function mapAttachments(mail: ParsedMail): Array<{
@@ -142,16 +149,14 @@ function classifySendFailure(err: any): { code: number; reason: string; meta?: R
 }
 
 // Load TLS materials if secure mode is enabled
-let tlsKey: Buffer | undefined
-let tlsCert: Buffer | undefined
+let tlsMaterials: { cert: Buffer; key: Buffer } | undefined
 if (SMTP_SECURE) {
   if (!TLS_CERT_PATH || !TLS_KEY_PATH) {
     console.error('SMTP_SECURE is true but TLS_CERT_PATH/TLS_KEY_PATH are not set')
     process.exit(1)
   }
   try {
-    tlsCert = fs.readFileSync(TLS_CERT_PATH)
-    tlsKey = fs.readFileSync(TLS_KEY_PATH)
+    tlsMaterials = loadTLSMaterial(TLS_CERT_PATH, TLS_KEY_PATH)
   } catch (e) {
     console.error('Failed to read TLS certificate or key:', e)
     process.exit(1)
@@ -161,7 +166,7 @@ if (SMTP_SECURE) {
 const server = new SMTPServer({
   secure: SMTP_SECURE,
   // Provide TLS materials in secure mode
-  ...(SMTP_SECURE ? { key: tlsKey, cert: tlsCert } : {}),
+  ...(SMTP_SECURE && tlsMaterials ? { key: tlsMaterials.key, cert: tlsMaterials.cert } : {}),
   disabledCommands,
   // If auth is enabled, require it; otherwise, allow unauthenticated use
   authOptional: !SMTP_AUTH_ENABLED,
@@ -213,8 +218,8 @@ const server = new SMTPServer({
         const envelopeFrom = typeof session.envelope.mailFrom === 'object' && session.envelope.mailFrom
           ? session.envelope.mailFrom.address
           : undefined
-        const fromHeader = firstAddress(mail.from) || DEFAULT_FROM || envelopeFrom
-  const toList = addressList(mail.to) || session.envelope.rcptTo?.map((r) => r.address)
+    const fromHeader = firstAddress(mail.from) || DEFAULT_FROM || envelopeFrom
+    const toList = addressList(mail.to) || session.envelope.rcptTo?.map((r) => r.address)
 
         if (!fromHeader) {
           throw new Error('Missing From header and DEFAULT_FROM not set')
@@ -324,3 +329,21 @@ const server = new SMTPServer({
 server.listen(SMTP_PORT, SMTP_HOST, () => {
   console.log(`SMTP bridge listening on ${SMTP_HOST}:${SMTP_PORT}`)
 })
+
+if (SMTP_SECURE && TLS_CERT_PATH && TLS_KEY_PATH) {
+  const reloadTls = () => {
+    try {
+      const next = loadTLSMaterial(TLS_CERT_PATH, TLS_KEY_PATH)
+      const tlsServer = server.server as unknown as TLSServer | undefined
+      if (tlsServer && typeof tlsServer.setSecureContext === 'function') {
+        tlsServer.setSecureContext({ key: next.key, cert: next.cert })
+        console.log('[smtpbound] reloaded TLS materials from disk in response to SIGHUP')
+      } else {
+        console.error('[smtpbound] TLS reload requested but underlying server does not expose setSecureContext')
+      }
+    } catch (err) {
+      console.error('[smtpbound] failed to reload TLS materials on SIGHUP', toSafeJSON(err))
+    }
+  }
+  process.on('SIGHUP', reloadTls)
+}
