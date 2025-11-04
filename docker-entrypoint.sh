@@ -17,6 +17,10 @@ ACME_RENEW_DAYS=${ACME_RENEW_DAYS:-30}
 ACME_EAB_KID=${ACME_EAB_KID:-}
 ACME_EAB_HMAC_KEY=${ACME_EAB_HMAC_KEY:-}
 
+# Rate limit guards
+ACME_MIN_ISSUE_INTERVAL_HOURS=${ACME_MIN_ISSUE_INTERVAL_HOURS:-24}
+ACME_COOLDOWN_HOURS_ON_FAILURE=${ACME_COOLDOWN_HOURS_ON_FAILURE:-6}
+
 NODE_CMD=("node" "dist/index.js")
 
 log() { echo "[entrypoint] $*"; }
@@ -38,6 +42,62 @@ acme() {
   # acme.sh interprets LOG_LEVEL as a numeric debug level; our app uses strings like 'info'.
   # Unset LOG_LEVEL for acme.sh calls to avoid numeric comparisons failing.
   env -u LOG_LEVEL acme.sh "$@"
+}
+
+now_ts() { date +%s; }
+hours_to_seconds() { echo $(( ${1:-0} * 3600 )); }
+
+should_throttle_issue() {
+  local primary="$1"
+  local dir="$ACME_HOME/.throttle/$primary"
+  local attempt_file="$dir/last_issue_attempt"
+  local failure_file="$dir/last_issue_failure"
+  local now; now=$(now_ts)
+  local min_gap; min_gap=$(hours_to_seconds "$ACME_MIN_ISSUE_INTERVAL_HOURS")
+  local cooldown; cooldown=$(hours_to_seconds "$ACME_COOLDOWN_HOURS_ON_FAILURE")
+
+  mkdir -p "$dir"
+
+  # Enforce minimum interval between any issue attempts
+  if [[ -f "$attempt_file" ]]; then
+    local last_attempt; last_attempt=$(cat "$attempt_file" 2>/dev/null || echo 0)
+    if [[ "$last_attempt" =~ ^[0-9]+$ ]] && (( now - last_attempt < min_gap )); then
+      local wait=$(( (last_attempt + min_gap) - now ))
+      warn "Issue throttled for $primary: last attempt was $(( (now - last_attempt)/60 ))m ago; wait ~${wait}s"
+      return 1
+    fi
+  fi
+
+  # If there was a recent failure, apply a shorter cooldown
+  if [[ -f "$failure_file" ]]; then
+    local last_failure; last_failure=$(cat "$failure_file" 2>/dev/null || echo 0)
+    if [[ "$last_failure" =~ ^[0-9]+$ ]] && (( now - last_failure < cooldown )); then
+      local wait=$(( (last_failure + cooldown) - now ))
+      warn "Issue cooldown active for $primary after failure; wait ~${wait}s"
+      return 1
+    fi
+  fi
+  return 0
+}
+
+record_issue_attempt() {
+  local primary="$1"
+  local dir="$ACME_HOME/.throttle/$primary"
+  mkdir -p "$dir"
+  now_ts > "$dir/last_issue_attempt" || true
+}
+
+record_issue_failure() {
+  local primary="$1"
+  local dir="$ACME_HOME/.throttle/$primary"
+  mkdir -p "$dir"
+  now_ts > "$dir/last_issue_failure" || true
+}
+
+clear_issue_failure() {
+  local primary="$1"
+  local dir="$ACME_HOME/.throttle/$primary"
+  rm -f "$dir/last_issue_failure" 2>/dev/null || true
 }
 
 install_acmesh() {
@@ -120,11 +180,21 @@ acme_issue_install() {
     fi
   else
     log "No existing cert found; issuing new certificate for: $domains_raw using $provider"
+    if ! should_throttle_issue "$primary"; then
+      # Throttled
+      if [[ -f "$cert_conf" ]]; then
+        warn "Throttled but existing config present; proceeding to install existing cert"
+      else
+        warn "Throttled and no existing cert; skipping issuance to avoid rate limits"
+        return 1
+      fi
+    fi
     # Build issue args, include staging for LE if requested
     local ISSUE_ARGS=(--home "$ACME_HOME" --issue)
     if [[ "${ACME_SERVER}" == "letsencrypt" && "${ACME_STAGING}" == "true" ]]; then
       ISSUE_ARGS+=(--staging)
     fi
+    record_issue_attempt "$primary"
     acme \
       "${ISSUE_ARGS[@]}" \
       "${DOMAIN_ARGS[@]}" \
@@ -132,7 +202,10 @@ acme_issue_install() {
       --keylength "$ACME_KEYLENGTH" \
       --days "$ACME_RENEW_DAYS" || {
         warn "acme.sh --issue failed; will check for existing certs"
+        record_issue_failure "$primary"
       }
+    # If issue succeeded, clear failure flag
+    clear_issue_failure "$primary"
   fi
 
   mkdir -p "$CERT_DIR"
