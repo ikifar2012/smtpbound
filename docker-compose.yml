@@ -1,6 +1,7 @@
 services:
   smtpbound:
     image: ghcr.io/ikifar2012/smtpbound:main
+    build: .
     env_file:
       - .env
     ports:
@@ -9,7 +10,12 @@ services:
     cap_add:
       - NET_BIND_SERVICE
     restart: unless-stopped
-    
+    # Persist ACME config/state and issued certs
+    volumes:
+      - ./secrets/acme:/acme
+      - ./secrets/certs:/certs
+    # Optional ACME auto-cert on boot (DNS validation)
+    # Configure via .env (see .env.example)
   # --- TLS (STARTTLS on 25 or SMTPS on 465) ---
   # Configure TLS and behavior in your .env file.
   # Choose ONE of the following configurations:

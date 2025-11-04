@@ -88,6 +88,49 @@ swaks --server 127.0.0.1 --port 465 --tls-on-connect \
     --body "Hello from smtpbound with built-in TLS!"
 ```
 
+### Auto-generate certs with DNS validation (acme.sh)
+
+This image can self-manage TLS certificates on startup using [acme.sh] with DNS validation. Certs are stored in `/certs` and acme state in `/acme` (both persisted by docker-compose under `./secrets`).
+
+1) In `.env`, enable ACME and configure domains and your DNS provider:
+
+```
+ACME_ENABLED=true
+ACME_DOMAINS=mx.example.com,mail.example.com
+ACME_DNS_PROVIDER=dns_cf   # see acme.sh dnsapi list
+ACME_EMAIL=admin@example.com
+ACME_SERVER=letsencrypt    # or zerossl/buypass/google
+ACME_STAGING=true          # optional while testing
+
+# Provider credentials (example: Cloudflare)
+# CF_Token=... or CF_Key=... and CF_Email=...
+```
+
+2) Ensure your compose file mounts the volumes (already included here):
+
+```yaml
+volumes:
+    - ./secrets/acme:/acme
+    - ./secrets/certs:/certs
+```
+
+3) Set SMTPS if desired and point the app to the generated paths (defaults work):
+
+```
+SMTP_SECURE=true
+TLS_CERT_PATH=/certs/fullchain.pem
+TLS_KEY_PATH=/certs/privkey.pem
+```
+
+On container start, the entrypoint will:
+- install acme.sh if missing
+- register the ACME account
+- issue/renew a cert for the requested domains via DNS
+- install the certs into `/certs`
+- start the app
+
+Note: For Let's Encrypt, set `ACME_STAGING=true` during testing to avoid rate limits.
+
 ## Docker / Compose
 
 1) Create your environment file
