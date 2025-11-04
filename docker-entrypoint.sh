@@ -36,6 +36,10 @@ ensure_tools() {
     err "openssl not found; image is missing required tools"
     exit 1
   fi
+  if ! command -v tar >/dev/null 2>&1; then
+    # Not fatal; we'll fall back to the online installer, but warn so users know.
+    warn "tar not found; falling back to online acme.sh installer"
+  fi
 }
 
 acme() {
@@ -101,13 +105,90 @@ clear_issue_failure() {
 }
 
 install_acmesh() {
-  if command -v acme.sh >/dev/null 2>&1; then
+  # We need the full acme.sh installation (including dnsapi scripts), not just the single script.
+  # Prefer installing from the official tarball; fall back to the online installer if tar is missing.
+  if command -v acme.sh >/dev/null 2>&1 && [[ -d "$ACME_HOME/dnsapi" ]]; then
     return
   fi
   log "Installing acme.sh"
-  local target="/usr/local/bin/acme.sh"
-  curl -fsSL https://raw.githubusercontent.com/acmesh-official/acme.sh/master/acme.sh -o "$target"
-  chmod +x "$target"
+
+  local installed=false
+  if command -v tar >/dev/null 2>&1; then
+    local tgz="/tmp/acme.sh.tar.gz"
+    local tmpdir="/tmp/acme-src"
+    rm -rf "$tmpdir" && mkdir -p "$tmpdir"
+    if curl -fsSL https://github.com/acmesh-official/acme.sh/archive/refs/heads/master.tar.gz -o "$tgz"; then
+      if tar -xzf "$tgz" -C "$tmpdir"; then
+        local src
+        src=$(find "$tmpdir" -maxdepth 1 -type d -name "acme.sh-*" | head -n1 || true)
+        if [[ -n "$src" && -f "$src/acme.sh" ]]; then
+          # Install into ACME_HOME without cron/profile modifications
+          "$src/acme.sh" --install --home "$ACME_HOME" --nocron --noprofile >/dev/null 2>&1 || true
+          installed=true
+        else
+          warn "Unexpected tarball layout while installing acme.sh; will try online installer"
+        fi
+      else
+        warn "Failed to extract acme.sh tarball; will try online installer"
+      fi
+    else
+      warn "Failed to download acme.sh tarball; will try online installer"
+    fi
+  fi
+
+  if [[ "$installed" != true ]] || [[ ! -d "$ACME_HOME/dnsapi" ]]; then
+    # Fallback to online installer (respects --home)
+    if curl -fsSL https://get.acme.sh | sh -s email="${ACME_EMAIL:-}" --home "$ACME_HOME" --nocron --noprofile; then
+      installed=true
+    else
+      err "Failed to install acme.sh"
+      exit 1
+    fi
+  fi
+
+  # Ensure the binary is on PATH
+  if ! command -v acme.sh >/dev/null 2>&1; then
+    ln -sf "$ACME_HOME/acme.sh" /usr/local/bin/acme.sh
+    chmod +x "$ACME_HOME/acme.sh"
+  fi
+}
+
+verify_dns_provider() {
+  local provider="$1"
+  if [[ -z "$provider" ]]; then
+    err "ACME_DNS_PROVIDER is required when ACME_ENABLED=true"
+    return 1
+  fi
+  if [[ ! -d "$ACME_HOME/dnsapi" ]]; then
+    err "acme.sh dnsapi directory not found at $ACME_HOME/dnsapi; installation may be incomplete"
+    return 1
+  fi
+  if [[ ! -f "$ACME_HOME/dnsapi/${provider}.sh" ]]; then
+    err "DNS API hook not found for provider '$provider'. Expected: $ACME_HOME/dnsapi/${provider}.sh"
+    warn "Ensure ACME_DNS_PROVIDER matches an acme.sh dnsapi script (e.g., dns_cf, dns_aws). See https://github.com/acmesh-official/acme.sh/wiki/dnsapi"
+    return 1
+  fi
+}
+
+check_dns_credentials() {
+  # Minimal preflight checks for common providers to provide clearer errors.
+  local provider="$1"
+  case "$provider" in
+    dns_cf)
+      if [[ -z "${CF_Token:-}" && ( -z "${CF_Key:-}" || -z "${CF_Email:-}" ) ]]; then
+        warn "Cloudflare creds missing: set CF_Token (preferred) or CF_Key + CF_Email. See acme.sh dns_cf docs."
+      fi
+      ;;
+    dns_aws)
+      if [[ -z "${AWS_ACCESS_KEY_ID:-}" || -z "${AWS_SECRET_ACCESS_KEY:-}" ]]; then
+        warn "AWS creds missing: set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY (and optionally AWS_REGION)."
+      fi
+      ;;
+    *)
+      # Other providers vary; rely on acme.sh error message but add a pointer to docs.
+      warn "Make sure required env vars for $provider are set. See dnsapi docs."
+      ;;
+  esac
 }
 
 acme_set_ca() {
@@ -232,6 +313,18 @@ maybe_run_acme() {
   mkdir -p "$ACME_HOME" "$CERT_DIR"
   acme_set_ca "$ACME_SERVER"
   acme_register
+
+  # Validate provider install and surface missing credentials early
+  if ! verify_dns_provider "$ACME_DNS_PROVIDER"; then
+    if [[ "${SMTP_SECURE:-false}" == "true" ]]; then
+      err "ACME DNS provider validation failed and SMTP_SECURE=true; refusing to start"
+      exit 1
+    else
+      warn "ACME DNS provider validation failed; continuing without TLS"
+      return 0
+    fi
+  fi
+  check_dns_credentials "$ACME_DNS_PROVIDER"
 
   if ! acme_issue_install "$ACME_DOMAINS_RAW" "$ACME_DNS_PROVIDER"; then
     if [[ "${SMTP_SECURE:-false}" == "true" ]]; then

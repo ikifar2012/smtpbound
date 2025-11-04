@@ -27,7 +27,7 @@ WORKDIR /app
 
 # Install minimal tools needed by entrypoint (curl, openssl)
 RUN apt-get update \
-	&& apt-get install -y --no-install-recommends bash curl ca-certificates openssl \
+	&& apt-get install -y --no-install-recommends bash curl ca-certificates openssl tar \
 	&& rm -rf /var/lib/apt/lists/*
 
 # Copy built artifacts and production deps only
