@@ -42,4 +42,4 @@ ENV SMTP_PORT=25
 # Expose SMTP/SMTPS ports
 EXPOSE 25/tcp 465/tcp
 
-ENTRYPOINT ["node", "dist/server.js"]
+ENTRYPOINT ["node", "dist/index.js"]
