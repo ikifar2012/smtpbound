@@ -35,11 +35,6 @@ COPY --from=build /app/package.json /app/pnpm-lock.yaml ./
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 
-# Add entrypoint and reload helper used by deploy-hook docker
-COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-COPY scripts/reload-smtpbound.sh /usr/local/bin/reload-smtpbound.sh
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh /usr/local/bin/reload-smtpbound.sh
-
 # Default env; override at runtime
 ENV SMTP_HOST=0.0.0.0
 ENV SMTP_PORT=25
@@ -47,4 +42,4 @@ ENV SMTP_PORT=25
 # Expose SMTP/SMTPS ports
 EXPOSE 25/tcp 465/tcp
 
-ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+ENTRYPOINT ["node", "dist/server.js"]
