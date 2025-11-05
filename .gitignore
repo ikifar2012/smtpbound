@@ -30,7 +30,7 @@ lerna-debug.log*
 # misc
 .DS_Store
 
-# certs & local ACME data (created by docker-compose)
+# certs & local Let's Encrypt data (created by docker-compose)
 data/
 *.pem
 *.crt
