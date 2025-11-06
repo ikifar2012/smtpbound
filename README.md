@@ -1,164 +1,78 @@
-# smtpbound — SMTP/SMTPS to Inbound bridge
+# smtpbound — SMTP to Inbound bridge
 
-This service exposes a local SMTP server and forwards received messages to [Inbound](https://inbound.new/) using their API/SDK. Use it when your systems only speak SMTP but you want to process or route mail via Inbound.
+Expose a lightweight SMTP server that receives emails and forwards them to Inbound using `@inboundemail/sdk`. Ideal when a system can only send via SMTP but you want to process, route, or fan-out via Inbound.
 
-> Disclaimer: This project is community-maintained and is not affiliated with, endorsed by, or sponsored by Inbound, inbound.new, or their owners. This code is entirely AI-generated and may contain bugs; use at your own risk.
+> Disclaimer: Community-maintained. Not affiliated with Inbound/inbound.new. Code is AI-generated; use at your own risk.
 
-## Features
+## What it does
 
-- Lightweight Node.js SMTP listener
-- Optional built-in SMTPS (implicit TLS on 465)
-- Parses MIME with attachments and forwards to Inbound `emails.send`
-- Simple configuration via environment variables (`.env`)
+- Listens on SMTP (port 25 by default)
+- Optionally serves SMTPS (implicit TLS on 465) when provided with a certificate
+- Parses MIME (including attachments) and forwards via Inbound Emails API
+- Configured entirely via environment variables (`.env`)
 
-## Compatibility with Inbound docs
+Docs reference:
+- https://docs.inbound.new/
+- https://docs.inbound.new/api-reference/emails/send-email
 
-This service uses the official SDK `@inboundemail/sdk` and follows the Send Email API:
-- Base docs: https://docs.inbound.new/
-- API reference: https://docs.inbound.new/api-reference/emails/send-email
+## Prerequisites
 
-Key points from the docs applied here:
-- from must use a verified domain in your Inbound account. 
-- to/cc/bcc accept strings or arrays of strings. Combined recipients should not exceed 50.
-- Both reply_to (snake_case) and replyTo (camelCase) are supported. We set `replyTo`.
-- attachments accept Base64 `content` or a remote `path`, with either `contentType` or `content_type`. We use Base64 `content`, `contentType`, and optional `content_id`.
-- Custom headers are provided as a string map.
-- Rate limiting (HTTP 429) and domain ownership (HTTP 403) are mapped to appropriate SMTP response codes.
+- Inbound API key (required)
+- One of:
+    - Node.js 20+ and pnpm, for local dev
+    - Docker and Docker Compose, for containerized run
 
-## Quick start (local dev)
+## Quick start (local)
 
-1) Install dependencies
+1) Install deps
 
 ```bash
 pnpm install
 ```
 
-2) Create an env file
+2) Configure environment
 
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env` and set at least:
-- `INBOUND_API_KEY` — your Inbound API key
-- Optionally set `DEFAULT_FROM` if incoming mail lacks a From header
-- Optionally set `LOG_LEVEL=info` (default) or `silent`
+Edit `.env` and set at minimum:
+- INBOUND_API_KEY=<your key>
+- Optionally DEFAULT_FROM, LOG_LEVEL
 
-3) Run in dev
+3) Run
 
 ```bash
 pnpm dev
 ```
 
-When it starts you should see: `SMTP bridge listening on 0.0.0.0:<port>`.
+You should see: `SMTP bridge listening on <host>:<port>`.
 
-4) Send a test email via SMTP (example with `swaks`)
+4) Test (example with swaks)
 
 ```bash
 swaks --server 127.0.0.1:25 \
     --from "Tester <agent@inbnd.dev>" \
-    --to youremail@inbound.new \
-    --header "Subject: Hello via bridge" \
-    --body "Hello from smtpbound!"
+    --to you@yourdomain.tld \
+    --header "Subject: Hello via smtpbound" \
+    --body "Hello!"
 ```
-
-You should see a log with the Inbound `id` and `messageId`.
-
-## TLS (built-in SMTPS)
-
-To enable TLS without a reverse proxy, use implicit TLS mode:
-
-1) Set in `.env`:
-     - `SMTP_SECURE=true`
-     - `TLS_CERT_PATH=/path/to/fullchain.pem`
-     - `TLS_KEY_PATH=/path/to/privkey.pem`
-     When `SMTP_SECURE=true`, default port becomes `465` (override with `SMTP_PORT` if needed).
-
-2) Test TLS endpoint locally:
-```bash
-openssl s_client -connect 127.0.0.1:465 -quiet
-```
-
-3) Send with implicit TLS:
-```bash
-swaks --server 127.0.0.1 --port 465 --tls-on-connect \
-    --from "Tester <agent@inbnd.dev>" \
-    --to youremail@inbound.new \
-    --header "Subject: Hello via SMTPS" \
-    --body "Hello from smtpbound with built-in TLS!"
-```
-
-### TLS with acme.sh (deploy-hook docker)
-
-The container no longer runs acme.sh internally. Instead follow the
-[deploy-hook docker guide](https://github.com/acmesh-official/acme.sh/wiki/deploy-to-docker-containers)
-and let an external acme.sh instance copy certs into the running container.
-
-1) Label the smtpbound service so acme.sh can find it:
-
-```yaml
-services:
-    smtpbound:
-        labels:
-            - sh.acme.autoload.domain=mx.example.com  # set to your MX hostname
-```
-
-2) Mount `/certs` so issued files persist and are visible to smtpbound (already
-     done in `docker-compose.yml`).
-
-3) Run the official `neilpang/acme.sh` image (daemon mode) with the Docker socket
-     mounted. The compose file contains a ready-to-use `acme` service that does
-     this.
-
-         - To use Cloudflare DNS (`dns_cf`), set `ACME_DNS_PROVIDER=dns_cf` and provide
-             `CF_Token` (recommended) or `CF_Key`/`CF_Email` in your `.env` (see
-             `.env.example`).
-
-4) Issue certificates by executing `acme.sh` inside the sidecar, e.g. (Cloudflare DNS):
-
-```bash
-docker exec acme.sh env \
-    CF_Token=$CF_Token \
-    acme.sh --issue \
-        -d mx.example.com \
-        --dns dns_cf \
-        --server letsencrypt
-```
-
-5) Deploy into the smtpbound container using the Docker deploy hook:
-
-```bash
-docker exec acme.sh acme.sh --deploy -d mx.example.com --deploy-hook docker
-```
-
-During deployment acme.sh copies the certificate files into `/certs` and then
-executes `/usr/local/bin/reload-smtpbound.sh` inside the smtpbound container. The
-application listens for `SIGHUP` and reloads TLS materials without a full restart.
-
-If certificates are not yet present when the container boots, the entrypoint
-waits up to `TLS_WAIT_TIMEOUT_SECONDS` (default 60) for them to appear.
 
 ## Docker / Compose
 
-1) Create your environment file
+1) Create and edit env
 
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env`:
-- Set `INBOUND_API_KEY`
-- If enabling auth, set `SMTP_AUTH_ENABLED=true` and configure `SMTP_AUTH_USER`/`SMTP_AUTH_PASS`
-
-2) Build and run
+Set `INBOUND_API_KEY` and any optional vars (see below). Then:
 
 ```bash
 docker compose up --build
 ```
 
-By default, the SMTP server will be available on port `25`.
-
-To expose SMTPS via Docker as well, add a second port mapping:
+Defaults expose SMTP on `25`:
 
 ```yaml
 services:
@@ -168,39 +82,71 @@ services:
             - .env
         ports:
             - "25:25"
-            - "465:465" # expose built-in SMTPS
         cap_add:
             - NET_BIND_SERVICE
         restart: unless-stopped
+        volumes:
+            - ./secrets/certs:/certs
 ```
+
+### Enabling TLS (SMTPS on 465)
+
+This service does not support STARTTLS. To use TLS, enable implicit TLS (SMTPS):
+
+1) Provide certs inside the container (e.g. mount `./secrets/certs` to `/certs`).
+2) In `.env`, set:
+     - `SMTP_SECURE=true`
+     - `TLS_CERT_PATH=/certs/fullchain.pem`
+     - `TLS_KEY_PATH=/certs/privkey.pem`
+     - optionally `SMTP_PORT=465`
+3) Expose port 465 in compose:
+
+```yaml
+services:
+    smtpbound:
+        ports:
+            - "25:25"
+            - "465:465"
+```
+
+Quick checks:
+
+```bash
+openssl s_client -connect 127.0.0.1:465 -quiet
+```
+
+Optional: a Certbot helper service is included in `docker-compose.yml` (profile `certbot`). It persists issued certificates under `./secrets` and can be wired to your web server or DNS provider. Exact issuance steps depend on your environment (HTTP-01 via a web server serving `./secrets/webroot`, or DNS-01 via plugins). Once issued, point `TLS_CERT_PATH`/`TLS_KEY_PATH` at the mounted files and restart.
 
 ## SMTP AUTH
 
-- Off by default. Enable with `SMTP_AUTH_ENABLED=true`
-- When enabled, authentication is required for all clients
-- Configure `SMTP_AUTH_USER` and `SMTP_AUTH_PASS`
-- When using a reverse proxy for TLS, the connection from the proxy to `smtpbound` is plaintext, but the client-to-proxy connection is secure.
+- Disabled by default
+- Enable by setting `SMTP_AUTH_ENABLED=true`
+- Provide credentials via `SMTP_AUTH_USER` and `SMTP_AUTH_PASS`
 
-## Configuration
+## Configuration reference
 
-See `.env.example` for all variables and Docker-focused defaults.
+See `.env.example` for all options.
 
-Variables:
-- INBOUND_API_KEY (required)
-- SMTP_HOST, SMTP_PORT
-- DEFAULT_FROM (optional)
-- LOG_LEVEL (info|silent)
-- SMTP_AUTH_ENABLED, SMTP_AUTH_USER, SMTP_AUTH_PASS (optional)
+Required:
+- `INBOUND_API_KEY`
+
+Common:
+- `SMTP_HOST` (default `0.0.0.0`)
+- `SMTP_PORT` (25 by default; 465 when `SMTP_SECURE=true`)
+- `SMTP_SECURE` (`false` | `true` for implicit TLS)
+- `TLS_CERT_PATH`, `TLS_KEY_PATH` (required when `SMTP_SECURE=true`)
+- `DEFAULT_FROM` (used if message lacks From)
+- `LOG_LEVEL` (`info` | `silent`)
+- `SMTP_AUTH_ENABLED`, `SMTP_AUTH_USER`, `SMTP_AUTH_PASS`
 
 ## Troubleshooting
 
-Common causes per Inbound docs:
-- 401 Unauthorized: Invalid or missing INBOUND_API_KEY.
-- 403 Domain Not Owned: The `from` domain is not verified in your Inbound account. Use a verified domain or `agent@inbnd.dev` for basic testing.
-- 429 Rate Limited: You hit plan rate limits. Try again later; the bridge returns temporary SMTP failure (451).
-- 400 Invalid Request: Missing required fields (from/to/subject) or invalid recipients.
+- 401 Unauthorized: Invalid or missing `INBOUND_API_KEY`.
+- 403 Domain not owned: `from` domain isn’t verified in Inbound. Use a verified domain or `agent@inbnd.dev` for quick tests.
+- 429 Rate limited: Temporary failure; the server returns SMTP 451. Retry later.
+- 400 Invalid request: Missing required fields or invalid recipients.
 
-When a send fails, this service logs structured details (status, message, and upstream data when available) and returns an appropriate SMTP status code to the client.
+On errors, the server logs structured details and maps upstream failures to reasonable SMTP status codes.
 
 ## License
 

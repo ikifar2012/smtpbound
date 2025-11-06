@@ -1,41 +1,12 @@
 services:
-  smtpbound:
-    image: ghcr.io/ikifar2012/smtpbound:main
-    build: .
-    env_file:
-      - .env
-    ports:
-      - "25:25"
-    # Allow binding to port 25 without running as root
-    cap_add:
-      - NET_BIND_SERVICE
-    restart: unless-stopped
-    # Persist issued certs so deploy-hook docker can copy into the container
-    volumes:
-      - ./secrets/certs:/certs
-    # Optional Certbot helper service below streamlines certificate issuance/renewal.
-  certbot:
-    image: certbot/certbot
-    container_name: certbot
-    profiles: ["certbot"]
-    env_file:
-      - .env
-    volumes:
-      - ./secrets/letsencrypt:/etc/letsencrypt
-      - ./secrets/lib-letsencrypt:/var/lib/letsencrypt
-      - ./secrets/log-letsencrypt:/var/log/letsencrypt
-      - ./secrets/webroot:/var/www/certbot
-      - ./secrets/certs:/certs
-  # --- TLS (STARTTLS on 25 or SMTPS on 465) ---
-  # Configure TLS and behavior in your .env file.
-  # Choose ONE of the following configurations:
-  # 1) STARTTLS on port 25 (recommended default):
-  #    - Keep SMTP_SECURE=false and ports mapping "25:25".
-  #    - Set TLS_KEY_PATH and TLS_CERT_PATH in .env and mount your certs:
-  # volumes:
-  #   - /local/certs:/certs:ro
-  #
-  # 2) SMTPS (implicit TLS) on port 465:
-  #    - Set SMTP_SECURE=true and SMTP_PORT=465 in .env
-  #    - Change ports mapping here to "465:465"
-  #    - Provide TLS_KEY_PATH and TLS_CERT_PATH in .env and mount certs (same as above)
+    smtpbound:
+        image: ghcr.io/ikifar2012/smtpbound:main
+        env_file:
+            - .env
+        ports:
+            - "25:25"
+        cap_add:
+            - NET_BIND_SERVICE
+        restart: unless-stopped
+        volumes:
+            - ./secrets/certs:/certs
