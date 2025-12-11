@@ -15,8 +15,8 @@ importers:
         specifier: ^17.2.3
         version: 17.2.3
       mailparser:
-        specifier: ^3.9.0
-        version: 3.9.0
+        specifier: ^3.9.1
+        version: 3.9.1
       smtp-server:
         specifier: ^3.16.1
         version: 3.16.1
@@ -514,8 +514,8 @@ packages:
   '@types/smtp-server@3.5.12':
     resolution: {integrity: sha512-IBemrqI6nzvbgwE41Lnd4v4Yf1Kc7F1UHjk1GFBLNhLcI/Zop1ggHQ8g7Y8QYc6jGVgzWQcsa0MBNcGnDY9UGw==}
 
-  '@zone-eu/mailsplit@5.4.7':
-    resolution: {integrity: sha512-jApX86aDgolMz08pP20/J2zcns02NSK3zSiYouf01QQg4250L+GUAWSWicmS7eRvs+Z7wP7QfXrnkaTBGrIpwQ==}
+  '@zone-eu/mailsplit@5.4.8':
+    resolution: {integrity: sha512-eEyACj4JZ7sjzRvy26QhLgKEMWwQbsw1+QZnlLX+/gihcNH07lVPOcnwf5U6UAL7gkc//J3jVd76o/WS+taUiA==}
 
   base32.js@0.1.0:
     resolution: {integrity: sha512-n3TkB02ixgBOhTvANakDb4xaMXnYUVkNoRFJjQflcqMQhyEKxEHdj3E6N8t8sUQ0mjH/3/JxzlXuz3ul/J90pQ==}
@@ -607,11 +607,15 @@ packages:
   linkify-it@5.0.0:
     resolution: {integrity: sha512-5aHCbzQRADcdP+ATqnDuhhJ/MRIqDkZX5pyjFHRRysS8vZ5AbqGEoFIb6pYHPZ+L/OC2Lc+xT8uHVVR5CAK/wQ==}
 
-  mailparser@3.9.0:
-    resolution: {integrity: sha512-jpaNLhDjwy0w2f8sySOSRiWREjPqssSc0C2czV98btCXCRX3EyNloQ2IWirmMDj1Ies8Fkm0l96bZBZpDG7qkg==}
+  mailparser@3.9.1:
+    resolution: {integrity: sha512-6vHZcco3fWsDMkf4Vz9iAfxvwrKNGbHx0dV1RKVphQ/zaNY34Buc7D37LSa09jeSeybWzYcTPjhiZFxzVRJedA==}
 
   nodemailer@7.0.10:
     resolution: {integrity: sha512-Us/Se1WtT0ylXgNFfyFSx4LElllVLJXQjWi2Xz17xWw7amDKO2MLtFnVp1WACy7GkVGs+oBlRopVNUzlrGSw1w==}
+    engines: {node: '>=6.0.0'}
+
+  nodemailer@7.0.11:
+    resolution: {integrity: sha512-gnXhNRE0FNhD7wPSCGhdNh46Hs6nm+uTyg+Kq0cZukNQiYdnCsoQjodNP9BQVG9XrcK/v6/MgpAPBUFyzh9pvw==}
     engines: {node: '>=6.0.0'}
 
   parseley@0.12.1:
@@ -1446,7 +1450,7 @@ snapshots:
     transitivePeerDependencies:
       - aws-crt
 
-  '@zone-eu/mailsplit@5.4.7':
+  '@zone-eu/mailsplit@5.4.8':
     dependencies:
       libbase64: 1.3.0
       libmime: 5.3.7
@@ -1566,20 +1570,22 @@ snapshots:
     dependencies:
       uc.micro: 2.1.0
 
-  mailparser@3.9.0:
+  mailparser@3.9.1:
     dependencies:
-      '@zone-eu/mailsplit': 5.4.7
+      '@zone-eu/mailsplit': 5.4.8
       encoding-japanese: 2.2.0
       he: 1.2.0
       html-to-text: 9.0.5
       iconv-lite: 0.7.0
       libmime: 5.3.7
       linkify-it: 5.0.0
-      nodemailer: 7.0.10
+      nodemailer: 7.0.11
       punycode.js: 2.3.1
       tlds: 1.261.0
 
   nodemailer@7.0.10: {}
+
+  nodemailer@7.0.11: {}
 
   parseley@0.12.1:
     dependencies:
