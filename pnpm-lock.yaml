@@ -18,8 +18,8 @@ importers:
         specifier: ^3.9.1
         version: 3.9.1
       smtp-server:
-        specifier: ^3.17.1
-        version: 3.17.1
+        specifier: ^3.18.0
+        version: 3.18.0
     devDependencies:
       '@types/mailparser':
         specifier: ^3.4.6
@@ -645,8 +645,8 @@ packages:
   selderee@0.11.0:
     resolution: {integrity: sha512-5TF+l7p4+OsnP8BCCvSyZiSPc4x4//p5uPwK8TCnVPJYRmU2aYKMpOXvw8zM5a5JvuuCGN1jmsMwuU2W02ukfA==}
 
-  smtp-server@3.17.1:
-    resolution: {integrity: sha512-CpJCgTq8eKuzlHf8qhU3eL7PUtoQkNa8wF4fimAiHKQZbEH5vltE9e2jHroDykUp22ypi4bJvsMf/2a0Twpn1Q==}
+  smtp-server@3.18.0:
+    resolution: {integrity: sha512-xINTnh0H8JDAKOAGSnFX8mgXB/L4Oz8dG4P0EgKAzJEszngxEEx4vOys+yNpsUc6yIyTKS8m2BcIffq4Htma/w==}
     engines: {node: '>=18.18.0'}
 
   strnum@2.1.1:
@@ -1607,7 +1607,7 @@ snapshots:
     dependencies:
       parseley: 0.12.1
 
-  smtp-server@3.17.1:
+  smtp-server@3.18.0:
     dependencies:
       base32.js: 0.1.0
       ipv6-normalize: 1.0.1
