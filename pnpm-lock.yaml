@@ -18,8 +18,8 @@ importers:
         specifier: ^3.9.3
         version: 3.9.3
       smtp-server:
-        specifier: ^3.18.0
-        version: 3.18.0
+        specifier: ^3.18.1
+        version: 3.18.1
     devDependencies:
       '@types/mailparser':
         specifier: ^3.4.6
@@ -518,10 +518,6 @@ packages:
   '@zone-eu/mailsplit@5.4.8':
     resolution: {integrity: sha512-eEyACj4JZ7sjzRvy26QhLgKEMWwQbsw1+QZnlLX+/gihcNH07lVPOcnwf5U6UAL7gkc//J3jVd76o/WS+taUiA==}
 
-  base32.js@0.1.0:
-    resolution: {integrity: sha512-n3TkB02ixgBOhTvANakDb4xaMXnYUVkNoRFJjQflcqMQhyEKxEHdj3E6N8t8sUQ0mjH/3/JxzlXuz3ul/J90pQ==}
-    engines: {node: '>=0.12.0'}
-
   bowser@2.12.1:
     resolution: {integrity: sha512-z4rE2Gxh7tvshQ4hluIT7XcFrgLIQaw9X3A+kTTRdovCz5PMukm/0QC/BKSYPj3omF5Qfypn9O/c5kgpmvYUCw==}
 
@@ -611,10 +607,6 @@ packages:
   mailparser@3.9.3:
     resolution: {integrity: sha512-AnB0a3zROum6fLaa52L+/K2SoRJVyFDk78Ea6q1D0ofcZLxWEWDtsS1+OrVqKbV7r5dulKL/AwYQccFGAPpuYQ==}
 
-  nodemailer@7.0.11:
-    resolution: {integrity: sha512-gnXhNRE0FNhD7wPSCGhdNh46Hs6nm+uTyg+Kq0cZukNQiYdnCsoQjodNP9BQVG9XrcK/v6/MgpAPBUFyzh9pvw==}
-    engines: {node: '>=6.0.0'}
-
   nodemailer@7.0.13:
     resolution: {integrity: sha512-PNDFSJdP+KFgdsG3ZzMXCgquO7I6McjY2vlqILjtJd0hy8wEvtugS9xKRF2NWlPNGxvLCXlTNIae4serI7dinw==}
     engines: {node: '>=6.0.0'}
@@ -650,8 +642,8 @@ packages:
   selderee@0.11.0:
     resolution: {integrity: sha512-5TF+l7p4+OsnP8BCCvSyZiSPc4x4//p5uPwK8TCnVPJYRmU2aYKMpOXvw8zM5a5JvuuCGN1jmsMwuU2W02ukfA==}
 
-  smtp-server@3.18.0:
-    resolution: {integrity: sha512-xINTnh0H8JDAKOAGSnFX8mgXB/L4Oz8dG4P0EgKAzJEszngxEEx4vOys+yNpsUc6yIyTKS8m2BcIffq4Htma/w==}
+  smtp-server@3.18.1:
+    resolution: {integrity: sha512-zlUXA6n3HkO0jMyNNc2S67uw7DWHOoLU9vjPo5oW2c8ehJMpRlSumyw4riuvfWPfW/8mryd7ED5PVf4YVg8Y6w==}
     engines: {node: '>=18.18.0'}
 
   strnum@2.1.1:
@@ -1457,8 +1449,6 @@ snapshots:
       libmime: 5.3.7
       libqp: 2.1.1
 
-  base32.js@0.1.0: {}
-
   bowser@2.12.1: {}
 
   deepmerge@4.3.1: {}
@@ -1584,8 +1574,6 @@ snapshots:
       punycode.js: 2.3.1
       tlds: 1.261.0
 
-  nodemailer@7.0.11: {}
-
   nodemailer@7.0.13: {}
 
   parseley@0.12.1:
@@ -1614,11 +1602,10 @@ snapshots:
     dependencies:
       parseley: 0.12.1
 
-  smtp-server@3.18.0:
+  smtp-server@3.18.1:
     dependencies:
-      base32.js: 0.1.0
       ipv6-normalize: 1.0.1
-      nodemailer: 7.0.11
+      nodemailer: 7.0.13
       punycode.js: 2.3.1
 
   strnum@2.1.1: {}
