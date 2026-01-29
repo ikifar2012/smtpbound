@@ -10,7 +10,7 @@
     "@inboundemail/sdk": "^4.4.0",
     "dotenv": "^17.2.3",
     "mailparser": "^3.9.3",
-    "smtp-server": "^3.18.0"
+    "smtp-server": "^3.18.1"
   },
   "devDependencies": {
     "@types/mailparser": "^3.4.6",
