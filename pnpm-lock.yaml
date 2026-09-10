@@ -15,8 +15,8 @@ importers:
         specifier: ^17.4.2
         version: 17.4.2
       mailparser:
-        specifier: ^3.9.23
-        version: 3.9.23
+        specifier: ^3.9.24
+        version: 3.9.24
       smtp-server:
         specifier: ^3.18.1
         version: 3.18.1
@@ -610,12 +610,12 @@ packages:
   linkify-it@5.0.2:
     resolution: {integrity: sha512-ONTm2jCMAVZjgQa/Fy1kScXsuOoF5NPTsoFBdE1KVIZ2vAh/r9+Bqo+0jINCBYnavTPQZz38QzFTme79ENoN3Q==}
 
-  mailparser@3.9.23:
-    resolution: {integrity: sha512-5jpsKltHt9oudhMu6mXxiwWMWV/CILfly+m9xhKiKW6cdmfOVvcAZ/NCuChV6QlADJqx1e5E2hwDAkP7lTP+Lg==}
+  mailparser@3.9.24:
+    resolution: {integrity: sha512-uK9B6Ynof9sh8fqHr5cclIN3q5/QL1LpEIrknLMp6UkrsOOxXW0Egt/o0COhkU0PuLZisn7l4ISpjGJTlA59sA==}
     engines: {node: '>=20.0.0'}
 
-  nodemailer@10.0.1:
-    resolution: {integrity: sha512-c+gU9cL9HLDax3vjxL88kW+6NOgdtEUWaZ+AUtxdJR6LLhf0kGdCLExof7yiKW7zdO9EfXCSIgmhGyFmUM0mYQ==}
+  nodemailer@10.0.3:
+    resolution: {integrity: sha512-h5c8ypcMoOIh44bIcVROvTDbjRdOJX8AXTkxMht2C92HlSjkG+/8kjoqmNPypfjQaVNaUHWyZ3tqs5I3K91F3g==}
     engines: {node: '>=20.0.0'}
 
   nodemailer@7.0.13:
@@ -1575,7 +1575,7 @@ snapshots:
     dependencies:
       uc.micro: 2.1.0
 
-  mailparser@3.9.23:
+  mailparser@3.9.24:
     dependencies:
       '@zone-eu/mailsplit': 5.4.16
       encoding-japanese: 2.3.0
@@ -1584,11 +1584,11 @@ snapshots:
       iconv-lite: 0.7.3
       libmime: 5.4.3
       linkify-it: 5.0.2
-      nodemailer: 10.0.1
+      nodemailer: 10.0.3
       punycode.js: 2.3.1
       tlds: 1.261.0
 
-  nodemailer@10.0.1: {}
+  nodemailer@10.0.3: {}
 
   nodemailer@7.0.13: {}
 
