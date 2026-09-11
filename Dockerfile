@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.21
+# syntax=docker/dockerfile:1.27
 
 # --- Build stage ---
 FROM node:24-slim AS build
