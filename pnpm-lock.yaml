@@ -15,8 +15,8 @@ importers:
         specifier: ^17.4.2
         version: 17.4.2
       mailparser:
-        specifier: ^3.9.32
-        version: 3.9.32
+        specifier: ^3.9.33
+        version: 3.9.33
       smtp-server:
         specifier: ^3.19.16
         version: 3.19.16
@@ -727,8 +727,8 @@ packages:
   linkify-it@5.0.2:
     resolution: {integrity: sha512-ONTm2jCMAVZjgQa/Fy1kScXsuOoF5NPTsoFBdE1KVIZ2vAh/r9+Bqo+0jINCBYnavTPQZz38QzFTme79ENoN3Q==}
 
-  mailparser@3.9.32:
-    resolution: {integrity: sha512-Ui9+Ln9ao8Smghk6SB3nAujV1AgWbjJVK0sWtaMFKBz7UpRIZi7XuCKls6EdY95hLkjBaaPziyYCyKHh/zoK8A==}
+  mailparser@3.9.33:
+    resolution: {integrity: sha512-+ZYhApN4f7B8+jokb7VZeml8lxYHixVJ3tJTB5iPG9/MJpy8YmBHGdy+AWJ9dmtUX6t0xlu4rxwj1b7eWCvbDA==}
     engines: {node: '>=20.0.0'}
 
   nodemailer@10.0.13:
@@ -1741,7 +1741,7 @@ snapshots:
     dependencies:
       uc.micro: 2.1.0
 
-  mailparser@3.9.32:
+  mailparser@3.9.33:
     dependencies:
       '@zone-eu/mailsplit': 5.4.19
       encoding-japanese: 2.4.0
