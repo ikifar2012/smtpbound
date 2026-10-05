@@ -9,7 +9,7 @@
   "dependencies": {
     "@inboundemail/sdk": "^4.4.0",
     "dotenv": "^17.4.2",
-    "mailparser": "^3.9.35",
+    "mailparser": "^3.9.36",
     "smtp-server": "^3.19.17"
   },
   "devDependencies": {
