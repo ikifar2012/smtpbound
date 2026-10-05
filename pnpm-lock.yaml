@@ -15,8 +15,8 @@ importers:
         specifier: ^17.4.2
         version: 17.4.2
       mailparser:
-        specifier: ^3.9.35
-        version: 3.9.35
+        specifier: ^3.9.36
+        version: 3.9.36
       smtp-server:
         specifier: ^3.19.17
         version: 3.19.17
@@ -690,9 +690,8 @@ packages:
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
     os: [darwin]
 
-  he@2.0.0:
-    resolution: {integrity: sha512-0jE+JPv08nhXWmI1dULybzqNt34RbkH6Ul6V4cmDONpjYx1SfyObKF38FJLaJ1K7WWD93LWL9lewzk4E1Ria4A==}
-    engines: {node: '>=22'}
+  he@1.2.0:
+    resolution: {integrity: sha512-F/1DnUGPopORZi0ni+CvrCgHQ5FyEAHRLSApuYWMmrbSwoN2Mn/7k+Gl38gJnR7yyDZk6WLXwiGod1JOWNDKGw==}
     hasBin: true
 
   html-to-text@10.0.1:
@@ -728,8 +727,8 @@ packages:
   linkify-it@5.0.2:
     resolution: {integrity: sha512-ONTm2jCMAVZjgQa/Fy1kScXsuOoF5NPTsoFBdE1KVIZ2vAh/r9+Bqo+0jINCBYnavTPQZz38QzFTme79ENoN3Q==}
 
-  mailparser@3.9.35:
-    resolution: {integrity: sha512-ID/TGNz3oHa+2iKJ4Y9Q4tNar2gorQYLOXnf7uTeq1ZQltaB8YGP/H84fKNh/t1mpZ7bRzB0e0WAiX7Y31A3Vw==}
+  mailparser@3.9.36:
+    resolution: {integrity: sha512-Fng3OmPN7khG0oVHDwwBIOYxjGu7kFxEuN6NnVV1H2tQYCIWjqvjK6cKvhj2r3XQVToVabP0b4HF+N7YgNdXFQ==}
     engines: {node: '>=20.0.0'}
 
   nodemailer@10.0.14:
@@ -1698,7 +1697,7 @@ snapshots:
   fsevents@2.3.3:
     optional: true
 
-  he@2.0.0: {}
+  he@1.2.0: {}
 
   html-to-text@10.0.1:
     dependencies:
@@ -1742,11 +1741,11 @@ snapshots:
     dependencies:
       uc.micro: 2.1.0
 
-  mailparser@3.9.35:
+  mailparser@3.9.36:
     dependencies:
       '@zone-eu/mailsplit': 5.4.20
       encoding-japanese: 2.4.0
-      he: 2.0.0
+      he: 1.2.0
       html-to-text: 10.0.1
       iconv-lite: 0.7.3
       libmime: 5.4.7
