@@ -14,7 +14,7 @@
   },
   "devDependencies": {
     "@types/mailparser": "^3.9.0",
-    "@types/node": "^24.19.1",
+    "@types/node": "^24.19.2",
     "@types/smtp-server": "^3.5.13",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2"
