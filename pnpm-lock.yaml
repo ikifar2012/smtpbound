@@ -15,8 +15,8 @@ importers:
         specifier: ^17.4.2
         version: 17.4.2
       mailparser:
-        specifier: ^3.12.4
-        version: 3.12.4
+        specifier: ^3.14.1
+        version: 3.14.1
       smtp-server:
         specifier: ^3.21.3
         version: 3.21.3
@@ -731,12 +731,8 @@ packages:
   linkify-it@5.0.2:
     resolution: {integrity: sha512-ONTm2jCMAVZjgQa/Fy1kScXsuOoF5NPTsoFBdE1KVIZ2vAh/r9+Bqo+0jINCBYnavTPQZz38QzFTme79ENoN3Q==}
 
-  mailparser@3.12.4:
-    resolution: {integrity: sha512-FdoMF+S89/AQaJHY7StwTfABPHZ8Vey+CDyUno5j+TO0jF0UxM+la4Pe9MeqKqBO4Y9ZMB2eomdyg5i+jzpfZw==}
-    engines: {node: '>=20.0.0'}
-
-  nodemailer@10.2.1:
-    resolution: {integrity: sha512-ZrDNsPFoDMwefNs7sJwrYiEJ/CG4ClJWDZv05iNJsEBWa8GRDry1QJHTJxsuTAY9eDDKjX4k+q3SxslXJOao7w==}
+  mailparser@3.14.1:
+    resolution: {integrity: sha512-Z0LLk7F0yhSCx3xjyL8BMm6dXO3vuWrSAeVhm1F18wVGVBbLAKOsVsCjPyOhJy+KuyDW9PRyDuyiPb7yJCHwVA==}
     engines: {node: '>=20.0.0'}
 
   nodemailer@10.3.1:
@@ -1749,18 +1745,16 @@ snapshots:
     dependencies:
       uc.micro: 2.1.0
 
-  mailparser@3.12.4:
+  mailparser@3.14.1:
     dependencies:
       '@zone-eu/mailsplit': 5.4.29
       he: 1.2.0
       html-to-text: 10.0.1
       libmime: 5.6.3
       linkify-it: 5.0.2
-      nodemailer: 10.2.1
+      nodemailer: 10.3.1
       punycode.js: 2.3.1
       tlds: 1.261.0
-
-  nodemailer@10.2.1: {}
 
   nodemailer@10.3.1: {}
 
